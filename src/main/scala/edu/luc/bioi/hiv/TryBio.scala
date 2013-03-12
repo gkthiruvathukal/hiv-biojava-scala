@@ -70,6 +70,8 @@ object TryBio {
       arg <- args
       sequences: JIterator[Sequence] =
         SeqIOTools.readGenbank(new BufferedReader(new FileReader(arg)))
+      // TODO discuss whether each input file should result in a separate
+      // output file
       seq <- sequences.asScala
       seqInfo <- getSequenceInformation(seq)
       sourceInfo <- getSourceInformation(seq)
