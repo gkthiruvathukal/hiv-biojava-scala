@@ -1,11 +1,9 @@
 package edu.luc.bioi.hiv
 
-import org.biojava.bio._
-import org.biojava.bio.seq._
-import org.biojava.bio.seq.io._
-import java.io._
-import org.biojava.bio.seq.db._
-import org.biojavax.bio.seq._
+import java.io.BufferedReader
+import java.io.FileReader
+import org.biojava.bio.seq.Sequence
+import org.biojava.bio.seq.io.SeqIOTools
 
 object TryBio {
   case class SourceInformation(country: String, collection_date: String, note: String)
@@ -19,8 +17,9 @@ object TryBio {
       null
   }
 
-  // Not used yet. Shows how to use FASTA builder interface
+  /*
   def writeSomeFasta(): Unit = {
+    import org.biojavax.bio.seq._
     val sdb = new HashSequenceDB()
     val dna1 = DNATools.createDNASequence("agct", "Dna-12");
     sdb.addSequence(dna1)
@@ -28,6 +27,8 @@ object TryBio {
     sdb.addSequence(dna2)
     RichSequence.IOTools.writeFasta(System.out, sdb.sequenceIterator(), null);
   }
+  *
+  */
 
   def getSourceInformation(sequence: Sequence): SourceInformation = {
     var featureIterator = sequence.features()
