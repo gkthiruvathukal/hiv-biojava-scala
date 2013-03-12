@@ -31,9 +31,7 @@ Then run the application outside of sbt like this:
 
 As an example...
 
-    $ target/start data/JX447639.gb
-
-Please note that you can currently specify only one file as a command-line parameter. I'm not done yet but will have it working shortly.
+    $ target/start data/JX447638.gb data/JX447639.gb
 
 # Eclipse
 

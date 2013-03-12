@@ -1,23 +1,28 @@
 package edu.luc.bioi.hiv
 
-import java.io.BufferedReader
-import java.io.FileReader
+import java.io.{BufferedReader, FileReader}
+import java.util.{Iterator => JIterator, Map => JMap}
 
-import org.biojava.bio.seq.Feature
-import org.biojava.bio.seq.Sequence
-import org.biojava.bio.seq.io.SeqIOTools
 import scala.collection.JavaConverters._
+import scala.language.implicitConversions
+
+import org.biojava.bio.seq.{Feature, Sequence, SequenceIterator}
+import org.biojava.bio.seq.io.SeqIOTools
+import org.biojava.bio.Annotation
 
 object TryBio {
-  case class SourceInformation(country: String, collection_date: String, note: String)
+  case class SourceInformation(country: String, collectionDate: String, note: String)
   case class SequenceInformation(accession: String)
   case class GeneInformation(gene: String, translation : String)
 
-  def getSequenceInformation(sequence: Sequence): SequenceInformation = {
-    val seqAnnotation = sequence.getAnnotation()
-    require { seqAnnotation.containsProperty("ACCESSION") }
-    SequenceInformation(seqAnnotation.getProperty("ACCESSION").toString)
-  }
+  /**
+   * Converts an annotation to a properly typed Scala map.
+   */
+  implicit def annotationAsScalaMap(annotation: Annotation) =
+    annotation.asMap.asInstanceOf[JMap[String, String]].asScala
+
+  def getSequenceInformation(sequence: Sequence): Option[SequenceInformation] =
+    sequence.getAnnotation get "ACCESSION" map SequenceInformation
 
 /*  def writeSomeFasta(): Unit = {
     import org.biojavax.bio.seq._
@@ -29,47 +34,47 @@ object TryBio {
     RichSequence.IOTools.writeFasta(System.out, sdb.sequenceIterator(), null);
   }*/
 
-  def getSourceInformation(sequence: Sequence): SourceInformation = {
-    val featureIterator = sequence.features
-    val features = featureIterator.asScala
-    val items = features.find( _.getType == "source").map {
-      f => val a = f.getAnnotation ;
-      SourceInformation(a.getProperty("country").toString, a.getProperty("collection_date").toString,
-           a.getProperty("note").toString)
+  def getSourceInformation(sequence: Sequence): Option[SourceInformation] =
+    sequence.features.asScala.find {
+      _.getType == "source"
+    } map { f =>
+      val a = f.getAnnotation
+      // TODO discuss what should happen if a sequence is missing any of these
+      // annotation properties
+      // right now: unchecked exception with program termination
+      // alternative: skip the sequence (using Option)
+      SourceInformation(a("country"), a("collection_date"), a("note"))
     }
-    items.get
+
+  private val allowedGenes = Set("gag", "pol", "env", "tat", "vif", "rev", "vpr", "vpu", "nef")
+
+  def getGenes(sequence: Sequence): Iterator[GeneInformation]  =
+    sequence.features.asScala.filter { f =>
+      f.getType == "CDS" && (allowedGenes contains f.getAnnotation()("gene"))
+    } map { f =>
+      val a = f.getAnnotation
+      GeneInformation(a("gene"), a("translation"))
+    }
+
+  /**
+   * Conversion of SequenceIterator to generic Java iterator.
+   */
+  implicit class JavaSequenceIterator(it: SequenceIterator) extends JIterator[Sequence] {
+    override def hasNext() = it.hasNext
+    override def next() = it.nextSequence()
+    override def remove() = throw new UnsupportedOperationException
   }
 
-  def getGenes(sequence: Sequence)  =  {
-    val featureIterator = sequence.features()
-    val features = featureIterator.asScala
-
-    val allowedGenes = Set("gag", "pol", "env", "tat", "vif", "rev", "vpr", "vpu", "nef")
-
-    features.filter(n => n.getType == "CDS" && (allowedGenes contains n.getAnnotation().getProperty("gene").toString)).
-       map {
-         f => val a = f.getAnnotation;
-         GeneInformation(a.getProperty("gene").toString, a.getProperty("translation").toString)
-       }
-  }
-
-  def main(args: Array[String]): Unit = {
-    val s = args(0)
-    val br = new BufferedReader(new FileReader(s))
-    val sequences = SeqIOTools.readGenbank(br)
-
-    // val scalaSequences = sequences.asScala
-    // For some reason: sequence iterators cannot be turned into Scala. Not that important.
-    while (sequences.hasNext()) {
-      val seq = sequences.nextSequence()
-      val seqInfo = getSequenceInformation(seq);
-      val sourceInfo = getSourceInformation(seq)
-      val report = for (gene <- getGenes(seq))
-        yield (seqInfo.accession, gene.gene.toString,
-            sourceInfo.collection_date,
-            sourceInfo.note,
-            gene.translation)
-      report foreach println
-    }
+  def main(args: Array[String]) {
+    for {
+      arg <- args
+      sequences: JIterator[Sequence] =
+        SeqIOTools.readGenbank(new BufferedReader(new FileReader(arg)))
+      seq <- sequences.asScala
+      seqInfo <- getSequenceInformation(seq)
+      sourceInfo <- getSourceInformation(seq)
+      gene <- getGenes(seq)
+    } println(seqInfo.accession, gene.gene, sourceInfo.collectionDate,
+        sourceInfo.note, gene.translation)
   }
 }
