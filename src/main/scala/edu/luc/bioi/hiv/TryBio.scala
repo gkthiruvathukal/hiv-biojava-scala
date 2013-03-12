@@ -3,19 +3,20 @@ package edu.luc.bioi.hiv
 import java.io.BufferedReader
 import java.io.FileReader
 
+import org.biojava.bio.seq.Feature
 import org.biojava.bio.seq.Sequence
 import org.biojava.bio.seq.io.SeqIOTools
+import scala.collection.JavaConverters._
 
 object TryBio {
   case class SourceInformation(country: String, collection_date: String, note: String)
   case class SequenceInformation(accession: String)
+  case class GeneInformation(gene: String, translation : String)
 
   def getSequenceInformation(sequence: Sequence): SequenceInformation = {
     val seqAnnotation = sequence.getAnnotation()
-    if (seqAnnotation.containsProperty("ACCESSION")) {
-      SequenceInformation(seqAnnotation.getProperty("ACCESSION").toString)
-    } else
-      null
+    require { seqAnnotation.containsProperty("ACCESSION") }
+    SequenceInformation(seqAnnotation.getProperty("ACCESSION").toString)
   }
 
 /*  def writeSomeFasta(): Unit = {
@@ -29,55 +30,46 @@ object TryBio {
   }*/
 
   def getSourceInformation(sequence: Sequence): SourceInformation = {
-    var featureIterator = sequence.features()
-
-    while (featureIterator.hasNext()) {
-      val feature = featureIterator.next()
-      val featureType = feature.getType()
-      val featureAnnotation = feature.getAnnotation()
-      if (featureType == "source") {
-        val country = featureAnnotation.getProperty("country").toString
-        val collection_date = featureAnnotation.getProperty("collection_date").toString
-        val note = featureAnnotation.getProperty("note").toString
-        return SourceInformation(country, collection_date, note)
-      }
+    val featureIterator = sequence.features
+    val features = featureIterator.asScala
+    val items = features.find( _.getType == "source").map {
+      f => val a = f.getAnnotation ;
+      SourceInformation(a.getProperty("country").toString, a.getProperty("collection_date").toString,
+           a.getProperty("note").toString)
     }
-    null
+    items.get
   }
 
-  def processCDS(sequence: Sequence, seqInfo: SequenceInformation, sourceInfo: SourceInformation) {
-    var featureIterator = sequence.features()
-    while (featureIterator.hasNext()) {
-      val feature = featureIterator.next()
-      val featureType = feature.getType()
-      val featureAnnotation = feature.getAnnotation()
-      var iterator = featureAnnotation.keys().iterator()
+  def getGenes(sequence: Sequence)  =  {
+    val featureIterator = sequence.features()
+    val features = featureIterator.asScala
 
-      val allowedGenes = Set("gag", "pol", "env", "tat", "vif", "rev", "vpr", "vpu", "nef")
-      if (featureType == "CDS") {
-        val translation = featureAnnotation.getProperty("translation")
-        val gene = featureAnnotation.getProperty("gene").toString
-        if (allowedGenes contains gene)
-          println(seqInfo.accession + "|" + gene + "|" + sourceInfo.country + "|" + sourceInfo.collection_date + "|" + sourceInfo.note + "|" + translation)
-        // else safe to ignore
-      } // else safe to ignore non CDS records
-    }
+    val allowedGenes = Set("gag", "pol", "env", "tat", "vif", "rev", "vpr", "vpu", "nef")
+
+    features.filter(n => n.getType == "CDS" && (allowedGenes contains n.getAnnotation().getProperty("gene").toString)).
+       map {
+         f => val a = f.getAnnotation;
+         GeneInformation(a.getProperty("gene").toString, a.getProperty("translation").toString)
+       }
   }
 
   def main(args: Array[String]): Unit = {
-
     val s = args(0)
     val br = new BufferedReader(new FileReader(s))
     val sequences = SeqIOTools.readGenbank(br)
 
+    // val scalaSequences = sequences.asScala
+    // For some reason: sequence iterators cannot be turned into Scala. Not that important.
     while (sequences.hasNext()) {
       val seq = sequences.nextSequence()
-      val seqInfo = getSequenceInformation(seq)
-      if (seqInfo != null) {
-        val sourceInfo = getSourceInformation(seq)
-        if (sourceInfo != null)
-          processCDS(seq, seqInfo, sourceInfo)
-      }
+      val seqInfo = getSequenceInformation(seq);
+      val sourceInfo = getSourceInformation(seq)
+      val report = for (gene <- getGenes(seq))
+        yield (seqInfo.accession, gene.gene.toString,
+            sourceInfo.collection_date,
+            sourceInfo.note,
+            gene.translation)
+      report foreach println
     }
   }
 }
