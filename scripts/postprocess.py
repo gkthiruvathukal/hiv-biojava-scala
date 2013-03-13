@@ -27,7 +27,7 @@ def closeFiles(files):
       f.close()
 
 def writeData(file, record):
-   (accession, gene, date, note, sequence) = record
+   (accession, gene, country, date, note, sequence) = record
    file.write(FASTATEMPLATE % vars())
 
 def main():
@@ -39,7 +39,7 @@ def main():
    genes = {}
    for line in sys.stdin:
       text = line.strip()
-      (accession, gene, date, note, sequence) = data = line.split("|")[:5]
+      (accession, gene, country, date, note, sequence) = data = line.split("|")[:6]
       records = genes.get(gene, [])
       records.append(data)
       genes[gene] = records

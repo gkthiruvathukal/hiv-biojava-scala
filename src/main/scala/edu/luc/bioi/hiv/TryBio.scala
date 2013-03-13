@@ -74,7 +74,7 @@ object TryBio {
       gene <- getGenes(seq)
     }
     { 
-      val fields = List(seqInfo.accession, gene.gene, sourceInfo.collectionDate,
+      val fields = List(seqInfo.accession, gene.gene, sourceInfo.country, sourceInfo.collectionDate,
         sourceInfo.note, seqInfo.origin.substring(gene.start, gene.end))
         println(fields.mkString("|"))
     }
