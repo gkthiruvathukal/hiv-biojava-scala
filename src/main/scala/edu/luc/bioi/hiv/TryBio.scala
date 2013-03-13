@@ -12,8 +12,8 @@ import org.biojava.bio.Annotation
 
 object TryBio {
   case class SourceInformation(country: String, collectionDate: String, note: String)
-  case class SequenceInformation(accession: String)
-  case class GeneInformation(gene: String, translation : String)
+  case class SequenceInformation(accession: String, origin: String)
+  case class GeneInformation(gene: String, start : Int, end : Int)
 
   /**
    * Converts an annotation to a properly typed Scala map.
@@ -21,18 +21,12 @@ object TryBio {
   implicit def annotationAsScalaMap(annotation: Annotation) =
     annotation.asMap.asInstanceOf[JMap[String, String]].asScala
 
-  def getSequenceInformation(sequence: Sequence): Option[SequenceInformation] =
-    sequence.getAnnotation get "ACCESSION" map SequenceInformation
-
-/*  def writeSomeFasta(): Unit = {
-    import org.biojavax.bio.seq._
-    val sdb = new HashSequenceDB()
-    val dna1 = DNATools.createDNASequence("agct", "Dna-12");
-    sdb.addSequence(dna1)
-    val dna2 = DNATools.createDNASequence("agagct", "Dna-13");
-    sdb.addSequence(dna2)
-    RichSequence.IOTools.writeFasta(System.out, sdb.sequenceIterator(), null);
-  }*/
+  def getSequenceInformation(sequence: Sequence): Option[SequenceInformation] = {
+    val a = sequence.getAnnotation
+    val origin = sequence.seqString();
+    // need to have an unknown value option for ACCESSION, similar to the note in SourceInformation
+    Some(SequenceInformation(a("ACCESSION"), origin))
+  }
 
   def getSourceInformation(sequence: Sequence): Option[SourceInformation] =
     sequence.features.asScala.find {
@@ -43,6 +37,7 @@ object TryBio {
       // annotation properties
       // right now: unchecked exception with program termination
       // alternative: skip the sequence (using Option)
+      // alternative I discussed with Catherine: default values for each are ok. unknown country, etc.
       SourceInformation(a("country"), a("collection_date"), a("note"))
     }
 
@@ -53,7 +48,10 @@ object TryBio {
       f.getType == "CDS" && (allowedGenes contains f.getAnnotation()("gene"))
     } map { f =>
       val a = f.getAnnotation
-      GeneInformation(a("gene"), a("translation"))
+      val l = f.getLocation
+      // Catherine tells me that these values start at 1,
+      // so we need to normalize for substring to extract the subsequence
+      GeneInformation(a("gene"), l.getMin-1, l.getMax-1)
     }
 
   /**
@@ -77,6 +75,6 @@ object TryBio {
       sourceInfo <- getSourceInformation(seq)
       gene <- getGenes(seq)
     } println(seqInfo.accession, gene.gene, sourceInfo.collectionDate,
-        sourceInfo.note, gene.translation)
+        sourceInfo.note, seqInfo.origin.substring(gene.start, gene.end))
   }
 }
