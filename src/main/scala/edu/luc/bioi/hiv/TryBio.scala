@@ -21,24 +21,27 @@ object TryBio {
   implicit def annotationAsScalaMap(annotation: Annotation) =
     annotation.asMap.asInstanceOf[JMap[String, String]].asScala
 
-  def getSequenceInformation(sequence: Sequence): Option[SequenceInformation] = {
-    val a = sequence.getAnnotation
-    val origin = sequence.seqString();
-    // need to have an unknown value option for ACCESSION, similar to the note in SourceInformation
-    Some(SequenceInformation(a("ACCESSION"), origin))
-  }
+  def getSequenceInformation(sequence: Sequence): Option[SequenceInformation] =
+    sequence.getAnnotation get "ACCESSION" map {
+      acc =>
+        val origin = sequence.seqString
+        SequenceInformation(acc, origin)
+    }
+
+  private val UNKNOWN_COUNTRY = "unknown country"
+  private val UNKNOWN_DATE    = "unknown date"
+  private val UNKNOWN_NOTE    = "unknown note"
 
   def getSourceInformation(sequence: Sequence): Option[SourceInformation] =
     sequence.features.asScala.find {
       _.getType == "source"
     } map { f =>
       val a = f.getAnnotation
-      // TODO discuss what should happen if a sequence is missing any of these
-      // annotation properties
-      // right now: unchecked exception with program termination
-      // alternative: skip the sequence (using Option)
-      // alternative I discussed with Catherine: default values for each are ok. unknown country, etc.
-      SourceInformation(a("country"), a("collection_date"), a("note"))
+      SourceInformation(
+        a.getOrElse("country", UNKNOWN_COUNTRY),
+        a.getOrElse("collection_date", UNKNOWN_DATE),
+        a.getOrElse("note", UNKNOWN_NOTE)
+      )
     }
 
   private val allowedGenes = Set("gag", "pol", "env", "tat", "vif", "rev", "vpr", "vpu", "nef")
@@ -49,9 +52,9 @@ object TryBio {
     } map { f =>
       val a = f.getAnnotation
       val l = f.getLocation
-      // Catherine tells me that these values start at 1,
-      // so we need to normalize for substring to extract the subsequence
-      GeneInformation(a("gene"), l.getMin-1, l.getMax-1)
+      // these values start at 1, so we need to normalize for substring
+      // to extract the subsequence
+      GeneInformation(a("gene"), l.getMin - 1, l.getMax - 1)
     }
 
   /**
@@ -68,8 +71,6 @@ object TryBio {
       arg <- args
       sequences: JIterator[Sequence] =
         SeqIOTools.readGenbank(new BufferedReader(new FileReader(arg)))
-      // TODO discuss whether each input file should result in a separate
-      // output file
       seq <- sequences.asScala
       seqInfo <- getSequenceInformation(seq)
       sourceInfo <- getSourceInformation(seq)
