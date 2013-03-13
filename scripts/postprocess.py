@@ -12,7 +12,7 @@ import sys
 import os
 import os.path
 
-FASTATEMPLATE=""">%(accession)s|%(gene)s|%(date)s|%(note)s)
+FASTATEMPLATE=""">%(accession)s|%(gene)s|%(date)s|%(note)s
 %(sequence)s"""
 
 def getFiles(folder, names):
