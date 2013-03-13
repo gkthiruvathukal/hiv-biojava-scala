@@ -33,6 +33,20 @@ As an example...
 
     $ target/start data/JX447638.gb data/JX447639.gb
 
+# Generating FASTA by gene
+
+You need to have a folder (that doesn't exist a priori) to write the results. If the folder exists
+from a previous run, you must rename or delete it.
+
+    $ target/start data/*.gb | python scripts/postprocess.py <folder-name> 
+
+I usually do:
+
+    $ rm -rf results
+    $ target/start data/*.gb | python scripts/postprocess.py results 
+    
+
+
 # Eclipse
 
 ## Generating the configuration files
