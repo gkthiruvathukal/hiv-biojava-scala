@@ -22,6 +22,7 @@ object TryBio {
     annotation.asMap.asInstanceOf[JMap[String, String]].asScala
 
   def getSequenceInformation(sequence: Sequence): Option[SequenceInformation] =
+    // returns None for sequences without accession so they get skipped in main
     sequence.getAnnotation get "ACCESSION" map {
       acc =>
         val origin = sequence.seqString
@@ -33,6 +34,7 @@ object TryBio {
   private val UNKNOWN_NOTE    = "unknown note"
 
   def getSourceInformation(sequence: Sequence): Option[SourceInformation] =
+    // returns None for non-source sequences so they get skipped in main
     sequence.features.asScala.find {
       _.getType == "source"
     } map { f =>
@@ -46,16 +48,15 @@ object TryBio {
 
   private val allowedGenes = Set("gag", "pol", "env", "tat", "vif", "rev", "vpr", "vpu", "nef")
 
-  def getGenes(sequence: Sequence): Iterator[GeneInformation]  =
-    sequence.features.asScala.filter { f =>
-      f.getType == "CDS" && (allowedGenes contains f.getAnnotation()("gene"))
-    } map { f =>
-      val a = f.getAnnotation
-      val l = f.getLocation
-      // these values start at 1, so we need to normalize for substring
-      // to extract the subsequence
-      GeneInformation(a("gene"), l.getMin - 1, l.getMax - 1)
-    }
+  def getGenes(sequence: Sequence): Iterator[GeneInformation] = for {
+    f <- sequence.features.asScala
+    // skip features without gene annotation
+    g <- f.getAnnotation.get("gene")
+    if f.getType == "CDS" && (allowedGenes contains g)
+    l = f.getLocation
+  } yield GeneInformation(g, l.getMin - 1, l.getMax - 1)
+  // these values start at 1, so we need to normalize for substring
+  // to extract the subsequence
 
   /**
    * Conversion of SequenceIterator to generic Java iterator.
