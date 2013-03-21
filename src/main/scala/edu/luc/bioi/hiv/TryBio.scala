@@ -1,19 +1,19 @@
 package edu.luc.bioi.hiv
 
-import java.io.{BufferedReader, FileReader}
-import java.util.{Iterator => JIterator, Map => JMap}
+import java.io.{ BufferedReader, FileReader }
+import java.util.{ Iterator => JIterator, Map => JMap }
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
-import org.biojava.bio.seq.{Feature, Sequence, SequenceIterator}
+import org.biojava.bio.seq.{ Feature, Sequence, SequenceIterator }
 import org.biojava.bio.seq.io.SeqIOTools
 import org.biojava.bio.Annotation
 
 object TryBio {
   case class SourceInformation(country: String, collectionDate: String, note: String)
   case class SequenceInformation(accession: String, origin: String)
-  case class GeneInformation(gene: String, start : Int, end : Int)
+  case class GeneInformation(gene: String, start: Int, end: Int)
 
   /**
    * Converts an annotation to a properly typed Scala map.
@@ -28,19 +28,17 @@ object TryBio {
   } yield SequenceInformation(acc, origin)
 
   private val UNKNOWN_COUNTRY = "unknown country"
-  private val UNKNOWN_DATE    = "unknown date"
-  private val UNKNOWN_NOTE    = "unknown note"
+  private val UNKNOWN_DATE = "unknown date"
+  private val UNKNOWN_NOTE = "unknown note"
 
   def getSourceInformation(sequence: Sequence): Option[SourceInformation] = for {
     // returns None for non-source sequences so they get skipped in main
     f <- sequence.features.asScala.find { _.getType == "source" }
     a = f.getAnnotation
-  } yield
-    SourceInformation(
-      a.getOrElse("country", UNKNOWN_COUNTRY),
-      a.getOrElse("collection_date", UNKNOWN_DATE),
-      a.getOrElse("note", UNKNOWN_NOTE)
-    )
+  } yield SourceInformation(
+    a.getOrElse("country", UNKNOWN_COUNTRY),
+    a.getOrElse("collection_date", UNKNOWN_DATE),
+    a.getOrElse("note", UNKNOWN_NOTE))
 
   private val allowedGenes = Set("gag", "pol", "env", "tat", "vif", "rev", "vpr", "vpu", "nef")
 
@@ -63,20 +61,28 @@ object TryBio {
     override def remove() = throw new UnsupportedOperationException
   }
 
-  def main(args: Array[String]) {
+  def processFile(file: java.io.FileReader) {
     for {
-      arg <- args
-      sequences: JIterator[Sequence] =
-        SeqIOTools.readGenbank(new BufferedReader(new FileReader(arg)))
+      dummy <- 1 to 1 // K: I don't get it. It seems like the following line can't be first in the for comprehension.
+      sequences: JIterator[Sequence] = SeqIOTools.readGenbank(new BufferedReader(file))
       seq <- sequences.asScala
       seqInfo <- getSequenceInformation(seq)
       sourceInfo <- getSourceInformation(seq)
       gene <- getGenes(seq)
-    }
-    { 
+    } {
       val fields = List(seqInfo.accession, gene.gene, sourceInfo.country, sourceInfo.collectionDate,
         sourceInfo.note, seqInfo.origin.substring(gene.start, gene.end))
-        println(fields.mkString("|"))
+      println(fields.mkString("|"))
+    }
+  }
+
+  def main(args: Array[String]) {
+    for (arg <- args) {
+      // We can't open an unlimited number of files in the for comprehension. I decided to factor out
+      // processFile to separate the file I/O aspect a bit.
+      val f = new FileReader(arg)
+      processFile(f)
+      f.close()
     }
   }
 }
