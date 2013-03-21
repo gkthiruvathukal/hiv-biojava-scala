@@ -61,15 +61,14 @@ object TryBio {
     override def remove() = throw new UnsupportedOperationException
   }
 
-  def processFile(file: java.io.FileReader) {
+  def processFile(file: java.io.FileReader) = {
+    val sequences: JIterator[Sequence] = SeqIOTools.readGenbank(new BufferedReader(file))
     for {
-      dummy <- 1 to 1 // K: I don't get it. It seems like the following line can't be first in the for comprehension.
-      sequences: JIterator[Sequence] = SeqIOTools.readGenbank(new BufferedReader(file))
       seq <- sequences.asScala
       seqInfo <- getSequenceInformation(seq)
       sourceInfo <- getSourceInformation(seq)
       gene <- getGenes(seq)
-    } {
+    }  {
       val fields = List(seqInfo.accession, gene.gene, sourceInfo.country, sourceInfo.collectionDate,
         sourceInfo.note, seqInfo.origin.substring(gene.start, gene.end))
       println(fields.mkString("|"))
@@ -78,8 +77,6 @@ object TryBio {
 
   def main(args: Array[String]) {
     for (arg <- args) {
-      // We can't open an unlimited number of files in the for comprehension. I decided to factor out
-      // processFile to separate the file I/O aspect a bit.
       val f = new FileReader(arg)
       processFile(f)
       f.close()
