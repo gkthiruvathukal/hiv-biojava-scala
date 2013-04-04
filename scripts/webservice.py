@@ -11,6 +11,7 @@ FASTATEMPLATE=""">%(accession)s|%(gene)s|%(date)s|%(note)s
 %(sequence)s"""
 
 app = Flask(__name__)
+app.debug = False
 
 def request_wants_json():
     best = request.accept_mimetypes \
@@ -32,11 +33,7 @@ def get_databases():
 def get_collection_gene_names_mongo(collection):
    client = MongoClient()
    db = client[collection]
-   cursor = db.posts.find()
-   gene_set = set()
-   for item in cursor:
-      gene_set.add(item['gene'])
-   return list(gene_set)
+   return db.posts.distinct('gene')
 
 def get_fasta(collection, gene):
    client = MongoClient()
@@ -64,5 +61,5 @@ def get_collection_gene(collection, gene):
    return resp
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host='0.0.0.0')
 

@@ -4,7 +4,7 @@ name := "hiv-biojava-scala"
 
 version := "0.0.2"
 
-scalaVersion := "2.10.1-RC1"
+scalaVersion := "2.10.1"
 
 resolvers += "BioJava repository" at "http://www.biojava.org/download/maven/"
 
