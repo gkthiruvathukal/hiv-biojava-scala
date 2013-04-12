@@ -18,6 +18,11 @@ from pymongo import *
 FASTATEMPLATE=""">%(accession)s|%(gene)s|%(date)s|%(note)s
 %(sequence)s"""
 
+# We need to make sure these characters don't end up in the FASTA. Best
+# to make sure they don't end up in the db to begin with.
+def clean(text):
+   return text.replace(';','').replace(':','').replace('(','').replace(')','')
+   
 def main():
 
    mongo_db_name = sys.argv[1]
@@ -36,11 +41,11 @@ def main():
       text = line.strip()
       (accession, gene, country, date, note, sequence) = data = line.split("|")[:6]
       document = {
-         'accession' : accession,
-         'gene' : gene, 
-         'country' : country,
-         'date' : date,
-         'note' : note,
+         'accession' : clean(accession),
+         'gene' : clean(gene), 
+         'country' : clean(country),
+         'date' : clean(date),
+         'note' : clean(note),
          'sequence' : sequence
       }
       db.posts.insert(document)
