@@ -55,6 +55,10 @@ I usually do:
 
 # Experimental Mongo+Python Postprocessor
 
+Make sure to install all needed dependencies using Python pip:
+
+    $ sudo pip install flask pymongo gunicorn
+
 MongoDB is a promising NoSQL database that can really put this work on steroids.
 
 This is sort of a mockup, which I think should be added to the Scala version!
@@ -64,23 +68,55 @@ This is sort of a mockup, which I think should be added to the Scala version!
 
 Example usage to get the "gag" gene:
 
-	$ target/start data/*.gb | python scripts/postprocess-mongo.py collection-name
+    $ target/start data/*.gb | python scripts/postprocess-mongo.py collection-name
 
 where *collection-name* should be replaced with a new (and empty) collection name.
 
-	$ python scripts/postprocess-fasta.py collection-name gene-name
+    $ python scripts/postprocess-fasta.py collection-name gene-name
 
 where *collection-name* should be replaced with a new (and empty) collection name and gene-name should be one of the extracted genes (e.g. gag, env, etc.)
 
 If you want to write the FASTA output to a file, do:
 
-	$ python scripts/postprocess-fasta.py collection-name gene-name > gene-name.fasta
+    $ python scripts/postprocess-fasta.py collection-name gene-name > gene-name.fasta
 
 This is much more flexible than our previous effort, which basically writes the files to hard-coded filenames. By using this process, we'll eventually be able to add or change the original GenBank data but have a completely decoupled process for generating FASTA for further analysis and visualization.
 
+# Running Web Service (Development)
+
+Run gunicorn in daemon mode with 4 (-w) worker threads:
+
+    $ cd scripts
+    $ gunicorn -w 4 -b 0.0.0.0:5000 webservice:app -D
+
+# Running Web Service (Deployment)
+
+Install supervisord:
+
+    $ apt-get install supervisord
 
 
+Create /etc/supervisor/conf.d/hivservice.conf with these contents::
 
+    [program:hivservice]
+    command = gunicorn -w 8 -b 0.0.0.0:5000 hivservice:app
+    directory = /home/xyz/Work/hiv-biojava-scala/scripts/
+    user = xyz
 
+This assumes you have checked out hiv-biojava-scala to ~xyz/Work.
 
+Then reread the configuration and restart:
 
+    $ sudo supervisorctl reread
+    $ sudo supervisorctl start hivservice
+
+And if you want to stop it:
+
+    $ sudo supervisorctl stop hivservice
+
+This setup pretty much rocks, because it ensures you have daemonized the 
+service properly. Among other things, if a reboot is required of the server,
+supervisord will restart your Flask service(s).
+
+I'm working to add notes about nginx for proxying,
+but this is a separate concern from getting the service up and running.
