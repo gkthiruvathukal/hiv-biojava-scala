@@ -7,7 +7,7 @@ from pymongo import *
 import json
 import StringIO
 
-FASTATEMPLATE=""">%(accession)s|%(gene)s|%(date)s|%(note)s
+FASTATEMPLATE=""">%(accession)s|%(gene)s|%(country)s|%(date)s|%(note)s
 %(sequence)s"""
 
 app = Flask(__name__)
@@ -60,6 +60,22 @@ def get_collection_gene(collection, gene):
    resp.headers['Link'] = 'http://localhost'
    return resp
 
+@app.route("/genbank/<collection>/unknown/<thing>")
+def get_unknown_thing(collection, thing):
+   client = MongoClient()
+   db = client[collection]
+   textfile = StringIO.StringIO()
+
+   if thing in ['country', 'date', 'note']:
+     results = db.posts.find({ thing : 'unknown '+thing })
+     unknowns = set( r['accession'] for r in results )
+     for unknown in unknowns:
+        textfile.write(unknown + '\n')
+
+   resp = Response(textfile.getvalue(), status=200, mimetype='text/plain')
+   textfile.close()
+   resp.headers['Link'] = 'http://localhost'
+   return resp
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
-
