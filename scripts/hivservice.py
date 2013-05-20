@@ -20,7 +20,7 @@ def request_wants_json():
         request.accept_mimetypes[best] > \
         request.accept_mimetypes['text/html']
 
-@app.route("/genbank")
+@app.route("/genbank/")
 def get_databases():
   client = MongoClient()
   db_names = client.database_names()
@@ -46,7 +46,7 @@ def get_fasta(collection, gene):
    fasta.close()
    return text
 
-@app.route("/genbank/<collection>")
+@app.route("/genbank/<collection>/")
 def get_collection_gene_names(collection):
    text = '\n'.join( get_collection_gene_names_mongo(collection))
    resp = Response(text, status=200, mimetype='text/plain')
