@@ -7,6 +7,7 @@ from pymongo import *
 import json
 import StringIO
 import socket
+import re
 
 FASTATEMPLATE=""">%(accession)s|%(gene)s|%(country)s|%(date)s|%(note)s
 %(sequence)s"""
@@ -21,6 +22,12 @@ def request_wants_json():
         request.accept_mimetypes[best] > \
         request.accept_mimetypes['text/html']
 
+#Function to setup mongoclient for db access
+def setup_mongoclient(collection):
+  client = MongoClient()
+  db = client[collection]
+  return db
+
 @app.route("/genbank/")
 def get_databases():
   client = MongoClient()
@@ -33,13 +40,11 @@ def get_databases():
   return render_template("index.html", dbs=dbList)
 
 def get_collection_gene_names_mongo(collection):
-   client = MongoClient()
-   db = client[collection]
+   db = setup_mongoclient(collection)
    return db.posts.distinct('gene')
 
 def get_fasta(collection, gene):
-   client = MongoClient()
-   db = client[collection]
+   db = setup_mongoclient(collection)
    cursor = db.posts.find({ 'gene' : gene })
    fasta = StringIO.StringIO()
    for item in cursor:
@@ -47,9 +52,9 @@ def get_fasta(collection, gene):
    text = fasta.getvalue()
    fasta.close()
    return text
+
 def get_accession(collection, number):
-  client = MongoClient()
-  db = client[collection]
+  db = setup_mongoclient(collection)
   cursor = db.posts.find({ 'accession' : number})
   fasta = StringIO.StringIO()
   for item in cursor:
@@ -59,8 +64,7 @@ def get_accession(collection, number):
   return text
 
 def date_after(collection, gene, year):
-  client = MongoClient()
-  db = client[collection]
+  db = setup_mongoclient(collection)
   cursor = db.posts.find({'gene' : gene , 'date': year })
   fasta = StringIO.StringIO()
   for item in cursor:
@@ -69,9 +73,18 @@ def date_after(collection, gene, year):
   fasta.close()
   return text
 
+# def date_range(collection, gene, firstYear, secondYear):
+#   db = setup_mongoclient(collection)
+#   cursor = db.posts.find({'gene' : gene , 'date' : {'$gte': firstYear, '$lte': secondYear}})
+#   fasta = StringIO.StringIO()
+#   for item in cursor:
+#     fasta.write(FASTATEMPLATE % item)
+#   text = fasta.getvalue()
+#   fasta.close()
+#   return text 
+
 def get_by_location(collection, gene, country):
-  client = MongoClient()
-  db = client[collection]
+  db = setup_mongoclient(collection)
   cursor = db.posts.find({"gene" : gene, "country" : country})
   fasta = StringIO.StringIO()
   for item in cursor:
@@ -92,7 +105,7 @@ def get_collection_gene_names(collection):
    geneList = text.split('\n')
    return render_template("geneView.html", genes=geneList)
   
-
+#Query for specific gene
 @app.route("/genbank/<collection>/<gene>/")
 def get_collection_gene(collection, gene):
   #resp = Response(get_fasta(collection, gene), status=200, mimetype='text/plain')
@@ -100,18 +113,33 @@ def get_collection_gene(collection, gene):
   text = get_fasta(collection, gene).split('\n')
   return render_template("selectGene.html", fastas=text)
 
+#Query for gene in specific year
 @app.route("/genbank/<collection>/<gene>/date/<year>/")
 def query_date(collection, gene, year):
   resp = Response(date_after(collection, gene, year), status=200, mimetype='text/plain')
   resp.headers['Link'] = 'http://localhost'
   return resp
 
+#Query date range of years:  Assume format xxxx-yyyy where xxxx is a year
+# that is less than yyyy
+# @app.route("/genbank/<collection>/<gene>/<range>/")
+# def query_range(collection, gene, range):
+#   regex = re.compile("([0-9]+)\-([0-9]+)")
+#   r = regex.search(range)
+#   firstYear = r.groups[0]
+#   secondYear = r.groups[1]
+#   resp = Response(date_range(collection, gene, firstYear, secondYear), status=200, mimetype='text/plain')
+#   resp.headers['Link'] = 'http://localhost'
+#   return resp
+
+#Query gene by country of isolation
 @app.route("/genbank/<collection>/<gene>/location/<country>/")
 def query_location(collection, gene, country):
   resp = Response(get_by_location(collection, gene, country), status=200, mimetype='text/plain')
   resp.headers['Link'] = 'http://localhost'
   return resp
 
+#Query sequence by accession number
 @app.route("/genbank/<collection>/accession/<number>")
 def query_accession(collection, number):
   resp = Response(get_accession(collection, number), status=200, mimetype='text/plain')
@@ -120,8 +148,7 @@ def query_accession(collection, number):
 
 @app.route("/genbank/<collection>/unknown/<thing>/")
 def get_unknown_thing(collection, thing):
-   client = MongoClient()
-   db = client[collection]
+   db = setup_mongoclient(collection)
    textfile = StringIO.StringIO()
 
    if thing in ['country', 'date', 'note']:
@@ -135,9 +162,6 @@ def get_unknown_thing(collection, thing):
    resp.headers['Link'] = 'http://localhost'
    return resp
 
+#Running app on localhost
 if __name__ == "__main__":
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(('localhost', 0))
-    port = sock.getsockname()[1]
-    sock.close()
     app.run(port=5050)
