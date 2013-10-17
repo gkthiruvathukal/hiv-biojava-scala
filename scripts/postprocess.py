@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+ #!/usr/bin/env python2
 
 #
 # This script assumes that the Scala program to parse the Genbank datasets has run and sent its
@@ -11,8 +11,9 @@
 import sys
 import os
 import os.path
+import pdb
 
-FASTATEMPLATE=""">%(accession)s|%(gene)s|%(date)s|%(note)s
+FASTATEMPLATE=""">%(accession)s|%(gene)s|%(country)s|%(date)s|%(note)s
 %(sequence)s"""
 
 def getFiles(folder, names):
