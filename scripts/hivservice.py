@@ -28,6 +28,7 @@ def setup_mongoclient(collection):
   db = client[collection]
   return db
 
+#Show available databases
 @app.route("/genbank/")
 def get_databases():
   client = MongoClient()
@@ -73,15 +74,15 @@ def date_after(collection, gene, year):
   fasta.close()
   return text
 
-# def date_range(collection, gene, firstYear, secondYear):
-#   db = setup_mongoclient(collection)
-#   cursor = db.posts.find({'gene' : gene , 'date' : {'$gte': firstYear, '$lte': secondYear}})
-#   fasta = StringIO.StringIO()
-#   for item in cursor:
-#     fasta.write(FASTATEMPLATE % item)
-#   text = fasta.getvalue()
-#   fasta.close()
-#   return text 
+def date_range(collection, gene, firstYear, secondYear):
+  db = setup_mongoclient(collection)
+  cursor = db.posts.find({'gene' : gene , 'date' : {'$gte': firstYear, '$lte': secondYear}})
+  fasta = StringIO.StringIO()
+  for item in cursor:
+    fasta.write(FASTATEMPLATE % item)
+  text = fasta.getvalue()
+  fasta.close()
+  return text 
 
 def get_by_location(collection, gene, country):
   db = setup_mongoclient(collection)
@@ -121,16 +122,16 @@ def query_date(collection, gene, year):
   return resp
 
 #Query date range of years:  Assume format xxxx-yyyy where xxxx is a year
-# that is less than yyyy
-# @app.route("/genbank/<collection>/<gene>/<range>/")
-# def query_range(collection, gene, range):
-#   regex = re.compile("([0-9]+)\-([0-9]+)")
-#   r = regex.search(range)
-#   firstYear = r.groups[0]
-#   secondYear = r.groups[1]
-#   resp = Response(date_range(collection, gene, firstYear, secondYear), status=200, mimetype='text/plain')
-#   resp.headers['Link'] = 'http://localhost'
-#   return resp
+#that is less than yyyy
+@app.route("/genbank/<collection>/<gene>/<range>/")
+def query_range(collection, gene, range):
+  regex = re.compile("([0-9]+)\-([0-9]+)")
+  r = regex.search(range)
+  firstYear = r.group(1)
+  secondYear = r.group(2)
+  resp = Response(date_range(collection, gene, firstYear, secondYear), status=200, mimetype='text/plain')
+  resp.headers['Link'] = 'http://localhost'
+  return resp
 
 #Query gene by country of isolation
 @app.route("/genbank/<collection>/<gene>/location/<country>/")
@@ -161,6 +162,37 @@ def get_unknown_thing(collection, thing):
    textfile.close()
    resp.headers['Link'] = 'http://localhost'
    return resp
+
+
+
+
+
+
+
+
+# new route will accept both a GET and POST request from the client (web browser)
+@app.route("/form", methods=["GET"])
+def getQuery():
+  print "test"
+  #queryType = request.form.get('type')
+  queryValue = request.form.get('value')
+  #print queryType
+  print queryValue
+
+  #if (queryType == "location"):
+  return url_for('query_location', collection=genedata, gene=gag, location=queryValue)
+
+
+
+
+
+
+
+
+
+
+
+
 
 #Running app on localhost
 if __name__ == "__main__":
