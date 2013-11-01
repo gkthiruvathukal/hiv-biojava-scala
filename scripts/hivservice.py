@@ -15,6 +15,8 @@ FASTATEMPLATE=""">%(accession)s|%(gene)s|%(country)s|%(date)s|%(note)s
 app = Flask(__name__)
 app.debug = True
 
+global database
+
 def request_wants_json():
     best = request.accept_mimetypes \
         .best_match(['application/json', 'text/html'])
@@ -26,6 +28,7 @@ def request_wants_json():
 def setup_mongoclient(collection):
   client = MongoClient()
   db = client[collection]
+  database = db
   return db
 
 #Show available databases
@@ -171,19 +174,23 @@ def get_unknown_thing(collection, thing):
 
 
 # new route will accept both a GET and POST request from the client (web browser)
-@app.route("/form", methods=["GET"])
-def getQuery():
+@app.route("/genbank/<collection>/<gene>/form", methods=["POST"])
+def getQuery(collection, gene):
   print "test"
-  #queryType = request.form.get('type')
-  queryValue = request.form.get('value')
+  queryType = request.form["type"]
+  queryValue = request.form["value"]
+  #queryValue = request.args.get('value')
   #print queryType
   print queryValue
+  print database
+  print queryType
 
   #if (queryType == "location"):
-  return url_for('query_location', collection=genedata, gene=gag, location=queryValue)
+  
+  c=collection
+  g= gene
 
-
-
+  return redirect(url_for('query_location', collection = c, gene = g, country = queryValue))
 
 
 
