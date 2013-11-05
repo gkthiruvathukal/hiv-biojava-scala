@@ -185,12 +185,18 @@ def getQuery(collection, gene):
   print database
   print queryType
 
-  #if (queryType == "location"):
-  
-  c=collection
-  g= gene
+  c = collection
+  g = gene
 
-  return redirect(url_for('query_location', collection = c, gene = g, country = queryValue))
+  if (queryType == "location"):
+    return redirect(url_for('query_location', collection = c, gene = g, country = queryValue))
+
+  if (queryType == "date"):
+    return redirect(url_for('query_date', collection = c, gene = g, year = queryValue))
+
+  if (queryType == "accession"):
+    return redirect(url_for('query_accession', collection = c, number = queryValue))
+
 
 
 
