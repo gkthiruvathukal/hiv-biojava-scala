@@ -1,18 +1,21 @@
 import com.typesafe.sbt.SbtStartScript
 
+import AssemblyKeys._
+
 name := "hiv-biojava-scala"
 
 version := "0.0.2"
 
-scalaVersion := "2.10.1"
+scalaVersion := "2.10.+"
 
 resolvers += "BioJava repository" at "http://www.biojava.org/download/maven/"
 
 libraryDependencies ++= Seq(
-  "junit" % "junit" % "4.11",
-  "com.novocode" % "junit-interface" % "0.10-M2" % "test",
-  "org.biojava" % "core" % "1.8.1",
-  "org.biojava" % "alignment" % "1.8.1"
+  "com.novocode" % "junit-interface" % "latest.release" % "test",
+  "org.biojava" % "core" % "1.8.4",
+  "org.biojava" % "alignment" % "1.8.4"
 )
 
 seq(SbtStartScript.startScriptForClassesSettings: _*)
+
+assemblySettings
