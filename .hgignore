@@ -25,6 +25,8 @@ local.properties
 .classpath
 .project
 .settings/
+*.iml
+.idea/
 
 # Emacs files
 *~
