@@ -91,9 +91,9 @@ Run gunicorn in daemon mode with 4 (-w) worker threads:
 
 # Running Web Service (Deployment)
 
-Install supervisord:
+Install supervisor daemon:
 
-    $ apt-get install supervisord
+    $ apt-get install supervisor
 
 
 Create /etc/supervisor/conf.d/hivservice.conf with these contents::
@@ -120,3 +120,51 @@ supervisord will restart your Flask service(s).
 
 I'm working to add notes about nginx for proxying,
 but this is a separate concern from getting the service up and running.
+
+# Apache Integration
+
+This is an example of how to set up a v-host entry in Apache:
+
+    # Place any notes or comments you have here
+    # It will make any customisation easier to understand in the weeks to come
+
+    # domain: domain1.com
+    # public: /var/www/vhosts/introcs.cs.luc.edu/domain.com/
+
+    <virtualhost *:80>
+      # Admin email, Server Name (domain name) and any aliases
+      ServerAdmin webmaster@hiv.mydomain.com
+      ServerName  hiv.mydomain.com
+      #ServerAlias www.hiv.mydomain.com
+
+
+      # Index file and Document Root (where the public files are located)
+      DirectoryIndex index.html
+      DocumentRoot /var/www/vhosts/hiv.mydomain.com/htdocs
+
+
+      # Custom log file locations
+      LogLevel warn
+      ErrorLog  /var/www/vhosts/hiv.mydomain.com/log/error.log
+      CustomLog /var/www/vhosts/hiv.mydomain.com/log/access.log combined
+
+      # Proxy Support
+      ProxyPass / http://localhost:5000/
+      ProxyPassReverse / http://localhost:5000/
+
+    </virtualhost>
+
+Pl
+
+If you are on Ubuntu (where we are), put this into a file in your
+sites-available folder, e.g. /etc/apache2/sites-available/hivdb.mydomain.com.
+
+We actually don't need the vhosts directory structure you see here, but on the
+servers we manage, we use a standard layout for any virtual host, especially
+if we want to serve some static files at some point in the future. We also
+like having site-specific logs.
+
+Please note that you need to have a number of Apache modules working to get
+virtual hosts and proxying working correctly. We're not covering that here.
+
+
