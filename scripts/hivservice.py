@@ -32,6 +32,14 @@ def setup_mongoclient(collection):
   return db
 
 #Show available databases
+@app.route("/about")
+def get_about():
+  return render_template("about.html")
+
+@app.route("/contact")
+def get_contact():
+  return render_template("contact.html")
+
 @app.route("/genbank/")
 def get_databases():
   client = MongoClient()
@@ -41,7 +49,7 @@ def get_databases():
   resp = Response(text, status=200, mimetype='text/plain')
   resp.headers['Link'] = 'http://localhost'
   dbList = text.split('\n')
-  return render_template("index.html", dbs=dbList)
+  return render_template("index2.html", dbs=dbList)
 
 def get_collection_gene_names_mongo(collection):
    db = setup_mongoclient(collection)
@@ -97,6 +105,65 @@ def get_by_location(collection, gene, country):
   fasta.close()
   return text
 
+@app.route("/genbank/<collection>/<gene>/<location>/<accession>/<date>")
+def query_builder(collection, gene, location, accession, date):
+  db = setup_mongoclient(collection)
+  query = {}
+  # if location != "":
+  #   query['location'] = location
+  # if accession != "":
+  #   query['accession'] = accession
+  # if date != "":
+  #   query['date'] = date
+  query['gene'] = str(gene)
+
+  if(location != 'none'):
+    query['country'] = str(location)
+
+  if(accession != 'none'):
+    query['accession'] = str(accession)
+
+  if(date != 'none'):
+    query['date'] = str(date)
+
+  cursor = db.posts.find(query)
+  fasta = StringIO.StringIO()
+  for item in cursor:
+    fasta.write(FASTATEMPLATE % item)
+  text = fasta.getvalue().split('\n')
+  fasta.close()
+  return render_template("selectGene.html", fastas=text, coll = collection, g = gene)
+
+@app.route("/genbank/<collection>/<gene>/<location>/<accession>/<date>/download")
+def download_fasta(collection, gene, location, accession, date):
+  db = setup_mongoclient(collection)
+  query = {}
+  
+  query['gene'] = str(gene)
+
+  if(location != 'none'):
+    query['country'] = str(location)
+
+  if(accession != 'none'):
+    query['accession'] = str(accession)
+
+  if(date != 'none'):
+    query['date'] = str(date)
+
+  cursor = db.posts.find(query)
+  fasta = StringIO.StringIO()
+  for item in cursor:
+    fasta.write(FASTATEMPLATE % item)
+  text = fasta.getvalue().split('\n')
+  fasta.close()
+
+  name = str(gene) + "_" + str(location) + "_" + str(accession) + "_" + str(date) + ".fasta"
+   
+  response = make_response(text)
+  response.headers["Content-Disposition"] = "attachment; filename=%s" %name
+  return response
+
+
 @app.route("/")
 def defaultRoute():
   return redirect("/genbank/")
@@ -115,7 +182,7 @@ def get_collection_gene(collection, gene):
   #resp = Response(get_fasta(collection, gene), status=200, mimetype='text/plain')
   #resp.headers['Link'] = 'http://localhost'
   text = get_fasta(collection, gene).split('\n')
-  return render_template("selectGene.html", fastas=text)
+  return render_template("selectGene.html", fastas=text, coll = collection, g = gene)
 
 #Query for gene in specific year
 @app.route("/genbank/<collection>/<gene>/date/<year>/")
@@ -126,7 +193,7 @@ def query_date(collection, gene, year):
 
 #Query date range of years:  Assume format xxxx-yyyy where xxxx is a year
 #that is less than yyyy
-@app.route("/genbank/<collection>/<gene>/<range>/")
+@app.route("/genbank/<collection>/<gene>/r/<range>/")
 def query_range(collection, gene, range):
   regex = re.compile("([0-9]+)\-([0-9]+)")
   r = regex.search(range)
@@ -176,26 +243,33 @@ def get_unknown_thing(collection, thing):
 # new route will accept both a GET and POST request from the client (web browser)
 @app.route("/genbank/<collection>/<gene>/form", methods=["POST"])
 def getQuery(collection, gene):
-  print "test"
-  queryType = request.form["type"]
-  queryValue = request.form["value"]
-  #queryValue = request.args.get('value')
-  #print queryType
-  print queryValue
-  print database
-  print queryType
+ 
+  queryDate = request.form['date']
+  queryAcc = request.form['accession']
+  queryLocation = request.form['location']
+
+  if(queryDate == ""):
+    queryDate = 'none'
+
+  if(queryAcc == ""):
+    queryAcc = 'none'
+
+  if(queryLocation == ""):
+    queryLocation = 'none'
 
   c = collection
   g = gene
 
-  if (queryType == "location"):
-    return redirect(url_for('query_location', collection = c, gene = g, country = queryValue))
+  return redirect(url_for('query_builder', collection = c, gene = g, location = queryLocation, accession = queryAcc, date = queryDate))
+  
+  # if (queryType == "location"):
+  #   return redirect(url_for('query_location', collection = c, gene = g, country = queryValue))
 
-  if (queryType == "date"):
-    return redirect(url_for('query_date', collection = c, gene = g, year = queryValue))
+  # if (queryType == "date"):
+  #   return redirect(url_for('query_date', collection = c, gene = g, year = queryValue))
 
-  if (queryType == "accession"):
-    return redirect(url_for('query_accession', collection = c, number = queryValue))
+  # if (queryType == "accession"):
+  #   return redirect(url_for('query_accession', collection = c, number = queryValue))
 
 
 
