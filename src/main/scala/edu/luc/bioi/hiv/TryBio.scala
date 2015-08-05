@@ -75,7 +75,7 @@ object TryBio {
     }
   }
 
-  def main(args: Array[String]) {
+  def go(args: Array[String]) {
     for (arg <- args) {
       val f = new FileReader(arg)
       processFile(f)
