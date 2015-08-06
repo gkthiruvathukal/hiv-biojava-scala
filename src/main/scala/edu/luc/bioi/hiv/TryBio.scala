@@ -4,7 +4,6 @@ import java.io.{ BufferedReader, FileReader, StringReader, Reader }
 import java.util.{ Iterator => JIterator, Map => JMap }
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.language.implicitConversions
 
 import org.biojava.bio.seq.{ Feature, Sequence, SequenceIterator }
@@ -63,30 +62,31 @@ object TryBio {
     override def remove() = throw new UnsupportedOperationException
   }
 
-  def processReader(reader: Reader) : List[String] = {
-    val sequences: JIterator[Sequence] = SeqIOTools.readGenbank(new BufferedReader(reader))
-    val results = mutable.MutableList[String]()
-    for {
-      seq <- sequences.asScala
-      seqInfo <- getSequenceInformation(seq)
-      sourceInfo <- getSourceInformation(seq)
-      gene <- getGenes(seq)
-    } {
-      val fields = List(seqInfo.accession, gene.gene, sourceInfo.country, sourceInfo.collectionDate,
-        sourceInfo.note, seqInfo.origin.substring(gene.start, gene.end))
-      results += fields.mkString("|")
-    }
-    results.toList
+  case class FastaOutputRecord(accession: String, gene: String, country: String, date: String, note: String, seq: String) {
+    def asCSV(delim: String) : String = List(accession, gene, country, date, note, seq).mkString(delim)
   }
 
-  def processFile(file: FileReader) = processReader( file)
+  def fromGenericReader(reader: Reader) : Iterator[FastaOutputRecord] = {
+    val sequences: JIterator[Sequence] = SeqIOTools.readGenbank(new BufferedReader(reader))
+    for {
+      seq <- sequences.asScala
+      gene <- getGenes(seq)
+      seqInfo <- getSequenceInformation(seq)
+      sourceInfo <- getSourceInformation(seq)
+    } yield {
+      FastaOutputRecord(seqInfo.accession, gene.gene, sourceInfo.country, sourceInfo.collectionDate,
+        sourceInfo.note, seqInfo.origin.substring(gene.start, gene.end))
+    }
+  }
+  
+  def fromFile(file: FileReader) = fromGenericReader( file)
 
-  def processString(text: String) = processReader( new StringReader(text) )
+  def fromString(text: String) = fromGenericReader( new StringReader(text) )
 
   def main(args: Array[String]) {
     for (arg <- args) {
       val f = new FileReader(arg)
-      processFile(f) foreach println
+      fromFile(f) map { _.asCSV("|") } foreach println
       f.close()
     }
   }
