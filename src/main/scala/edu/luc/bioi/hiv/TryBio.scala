@@ -1,9 +1,10 @@
 package edu.luc.bioi.hiv
 
-import java.io.{ BufferedReader, FileReader }
+import java.io.{ BufferedReader, FileReader, StringReader, Reader }
 import java.util.{ Iterator => JIterator, Map => JMap }
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.language.implicitConversions
 
 import org.biojava.bio.seq.{ Feature, Sequence, SequenceIterator }
@@ -11,6 +12,7 @@ import org.biojava.bio.seq.io.SeqIOTools
 import org.biojava.bio.Annotation
 
 object TryBio {
+
   case class SourceInformation(country: String, collectionDate: String, note: String)
   case class SequenceInformation(accession: String, origin: String)
   case class GeneInformation(gene: String, start: Int, end: Int)
@@ -61,8 +63,9 @@ object TryBio {
     override def remove() = throw new UnsupportedOperationException
   }
 
-  def processFile(file: java.io.FileReader) = {
-    val sequences: JIterator[Sequence] = SeqIOTools.readGenbank(new BufferedReader(file))
+  def processReader(reader: Reader) : List[String] = {
+    val sequences: JIterator[Sequence] = SeqIOTools.readGenbank(new BufferedReader(reader))
+    val results = mutable.MutableList[String]()
     for {
       seq <- sequences.asScala
       seqInfo <- getSequenceInformation(seq)
@@ -71,14 +74,19 @@ object TryBio {
     } {
       val fields = List(seqInfo.accession, gene.gene, sourceInfo.country, sourceInfo.collectionDate,
         sourceInfo.note, seqInfo.origin.substring(gene.start, gene.end))
-      println(fields.mkString("|"))
+      results += fields.mkString("|")
     }
+    results.toList
   }
 
-  def go(args: Array[String]) {
+  def processFile(file: FileReader) = processReader( file)
+
+  def processString(text: String) = processReader( new StringReader(text) )
+
+  def main(args: Array[String]) {
     for (arg <- args) {
       val f = new FileReader(arg)
-      processFile(f)
+      processFile(f) foreach println
       f.close()
     }
   }
